@@ -13,27 +13,27 @@ A command-line tool that generates weekly status reports from git commits in you
 ## Installation
 
 1. Clone this repository
-2. Install the required dependencies:
+2. Create and activate a virtual environment:
    ```bash
-   pip install -r requirements.txt
+   python3 -m venv venv
+   source venv/bin/activate
    ```
-3. Make the script executable:
+3. Install the package in development mode:
    ```bash
-   chmod +x wsr.py
+   pip install -e .
    ```
-4. (Optional) Add the script to your PATH for easier access
 
 ## Usage
 
-Run the script with a Monday date as an argument:
+Run the `wsr` command with a Monday date as an argument:
 
 ```bash
-./wsr.py MM/DD/YYYY
+wsr MM/DD/YYYY
 ```
 
 Example:
 ```bash
-./wsr.py 06/02/2026
+wsr 06/02/2026
 ```
 
 The script will:
