@@ -41,6 +41,27 @@ The script will:
 2. Scan through your ~/Workspaces directory
 3. Generate a status report file named `status_report_YYYYMMDD.txt`
 
+## Testing
+
+The project uses pytest for testing. To run the tests:
+
+1. Install test dependencies:
+   ```bash
+   pip install -e ".[test]"
+   ```
+
+2. Run the tests:
+   ```bash
+   # Run all tests with verbose output
+   pytest tests/ -v
+
+   # Run tests with coverage report
+   pytest tests/ --cov=weekly_status_report
+
+   # Run a specific test
+   pytest tests/test_wsr.py::TestWSR::test_is_monday -v
+   ```
+
 ## Output Format
 
 The generated report will look like this:

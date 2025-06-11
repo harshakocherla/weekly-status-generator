@@ -10,16 +10,21 @@ All notable changes to this project will be documented in this file.
 - Command-line interface with `wsr` command
 - Support for scanning git repositories in ~/Workspaces
 - Daily commit message tracking from Monday to Friday
+- Unit test suite with pytest
+- Test coverage reporting
+- Comprehensive test cases for date handling and validation
 
 ### Changed
 - Enhanced report generation to support multiple weeks
 - Added weekly section headers in the report
 - Improved report formatting with separators
 - Added "END of Report" marker
+- Added test dependencies to setup.py
 
 ### Features
 - Generate reports for any past Monday date
 - Automatically includes all weeks from the given date until today
 - Shows "continuing previous day's work" for days without commits
 - Displays repository scanning progress
-- Creates formatted text reports with weekly sections 
+- Creates formatted text reports with weekly sections
+- Comprehensive test coverage for core functionality 
