@@ -18,6 +18,18 @@ def get_week_dates(monday_date):
         dates.append(monday_date + timedelta(days=i))
     return dates
 
+def get_weeks_until_today(start_monday):
+    """Get all Monday dates from start_monday until today's week."""
+    weeks = []
+    current_monday = start_monday
+    today = datetime.now().date()
+    
+    while current_monday <= today:
+        weeks.append(current_monday)
+        current_monday += timedelta(days=7)
+    
+    return weeks
+
 def is_git_repo(path):
     """Check if the given path is a git repository."""
     try:
@@ -46,12 +58,8 @@ def process_workspace(workspace_path, monday_date):
         print(f"Error: Workspace path {workspace_path} does not exist.")
         return
 
-    week_dates = get_week_dates(monday_date)
-    status_report = {}
-
-    # Initialize status report with all dates
-    for date in week_dates:
-        status_report[date] = "continuing previous day's work"
+    weeks = get_weeks_until_today(monday_date)
+    all_reports = {}
 
     print("\nScanning repositories in ~/Workspaces:")
     print("-" * 50)
@@ -62,22 +70,33 @@ def process_workspace(workspace_path, monday_date):
             if is_git_repo(item):
                 print(f"✓ Found git repository: {item.name}")
                 repo = git.Repo(item)
-                for date in week_dates:
-                    commits = get_commits_for_date(repo, date)
-                    if commits:
-                        # Get the first commit message for the day
-                        status_report[date] = commits[0].message.strip()
+                for week_monday in weeks:
+                    week_dates = get_week_dates(week_monday)
+                    if week_monday not in all_reports:
+                        all_reports[week_monday] = {}
+                        for date in week_dates:
+                            all_reports[week_monday][date] = "continuing previous day's work"
+                    
+                    for date in week_dates:
+                        commits = get_commits_for_date(repo, date)
+                        if commits:
+                            all_reports[week_monday][date] = commits[0].message.strip()
             else:
                 print(f"✗ Not a git repository: {item.name}")
     
     print("-" * 50)
-    return status_report
+    return all_reports
 
-def generate_report(status_report, output_file):
+def generate_report(all_reports, output_file):
     """Generate the status report file."""
     with open(output_file, 'w') as f:
-        for date, message in status_report.items():
-            f.write(f"{date.strftime('%m/%d/%Y')} - {message}\n")
+        for week_monday, week_report in sorted(all_reports.items()):
+            f.write(f"\nReport for week starting at {week_monday.strftime('%m/%d/%Y')}\n")
+            f.write("-" * 50 + "\n")
+            for date, message in sorted(week_report.items()):
+                f.write(f"{date.strftime('%m/%d/%Y')} - {message}\n")
+            f.write("-" * 50 + "\n")
+        f.write("\nEND of Report\n")
 
 def main():
     if len(sys.argv) != 2:
@@ -96,11 +115,11 @@ def main():
         sys.exit(1)
 
     workspace_path = os.path.expanduser("~/Workspaces")
-    status_report = process_workspace(workspace_path, monday_date)
+    all_reports = process_workspace(workspace_path, monday_date)
     
-    # Generate output filename based on the week
+    # Generate output filename based on the start week
     output_file = f"status_report_{monday_date.strftime('%Y%m%d')}.txt"
-    generate_report(status_report, output_file)
+    generate_report(all_reports, output_file)
     print(f"\nStatus report generated: {output_file}")
 
 if __name__ == "__main__":
