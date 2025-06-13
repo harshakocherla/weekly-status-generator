@@ -38,7 +38,16 @@ def is_git_repo(path):
     except git.InvalidGitRepositoryError:
         return False
 
-def get_commits_for_date(repo, date):
+def get_current_git_user(repo):
+    """Get the current git user's email and name."""
+    try:
+        email = repo.config_reader().get_value("user", "email", "")
+        name = repo.config_reader().get_value("user", "name", "")
+        return email, name
+    except Exception:
+        return None, None
+
+def get_commits_for_date(repo, date, user_email=None, user_name=None):
     """Get all commits for a specific date in the repository."""
     commits = []
     start_date = datetime.combine(date, datetime.min.time())
@@ -47,7 +56,13 @@ def get_commits_for_date(repo, date):
     for commit in repo.iter_commits():
         commit_date = datetime.fromtimestamp(commit.committed_date)
         if start_date <= commit_date <= end_date:
-            commits.append(commit)
+            # Filter by user if specified
+            if user_email and user_name:
+                if (commit.author.email == user_email or 
+                    commit.author.name == user_name):
+                    commits.append(commit)
+            else:
+                commits.append(commit)
     
     return commits
 
@@ -70,6 +85,10 @@ def process_workspace(workspace_path, monday_date):
             if is_git_repo(item):
                 print(f"✓ Found git repository: {item.name}")
                 repo = git.Repo(item)
+                user_email, user_name = get_current_git_user(repo)
+                if user_email or user_name:
+                    print(f"  👤 Filtering commits for: {user_name or user_email}")
+                
                 for week_monday in weeks:
                     week_dates = get_week_dates(week_monday)
                     if week_monday not in all_reports:
@@ -78,7 +97,7 @@ def process_workspace(workspace_path, monday_date):
                             all_reports[week_monday][date] = "continuing previous day's work"
                     
                     for date in week_dates:
-                        commits = get_commits_for_date(repo, date)
+                        commits = get_commits_for_date(repo, date, user_email, user_name)
                         if commits:
                             all_reports[week_monday][date] = commits[0].message.strip()
             else:
