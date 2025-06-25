@@ -6,6 +6,10 @@ import git
 from datetime import datetime, timedelta
 from dateutil.parser import parse
 from pathlib import Path
+from docx import Document
+from docx.oxml import OxmlElement
+from docx.oxml.ns import qn
+from docx.shared import Inches
 
 def is_monday(date):
     """Check if the given date is a Monday."""
@@ -117,6 +121,71 @@ def generate_report(all_reports, output_file):
             f.write("-" * 50 + "\n")
         f.write("\nEND of Report\n")
 
+def set_cell_border(cell, **kwargs):
+    """
+    Set cell's border
+    Usage:
+    set_cell_border(
+        cell,
+        top={"sz": 12, "val": "single", "color": "000000", "space": "0"},
+        bottom={"sz": 12, "val": "single", "color": "000000", "space": "0"},
+        left={"sz": 12, "val": "single", "color": "000000", "space": "0"},
+        right={"sz": 12, "val": "single", "color": "000000", "space": "0"},
+    )
+    """
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    for edge in ('top', 'left', 'bottom', 'right'):
+        edge_data = kwargs.get(edge)
+        if edge_data:
+            tag = 'w:{}'.format(edge)
+            element = tcPr.find(qn(tag))
+            if element is None:
+                element = OxmlElement(tag)
+                tcPr.append(element)
+            for key in edge_data:
+                element.set(qn('w:{}'.format(key)), str(edge_data[key]))
+
+def set_cell_padding(cell, top=0.08, bottom=0.08, left=0.08, right=0.08):
+    """
+    Set cell padding in inches (default 0.08in for all sides).
+    """
+    tc = cell._tc
+    tcPr = tc.get_or_add_tcPr()
+    tcMar = tcPr.find(qn('w:tcMar'))
+    if tcMar is None:
+        tcMar = OxmlElement('w:tcMar')
+        tcPr.append(tcMar)
+    for margin, value in (('top', top), ('bottom', bottom), ('left', left), ('right', right)):
+        node = tcMar.find(qn('w:' + margin))
+        if node is None:
+            node = OxmlElement('w:' + margin)
+            tcMar.append(node)
+        node.set(qn('w:w'), str(int(Inches(value).twips)))
+        node.set(qn('w:type'), 'dxa')
+
+def fill_docx_report(template_path, output_path, week_report):
+    """Fill the docx template with a single week's status report data and save as a new file."""
+    doc = Document(template_path)
+    table = doc.tables[0]
+    # Remove all rows except the header
+    while len(table.rows) > 1:
+        table._tbl.remove(table.rows[1]._tr)
+    border_settings = {
+        "top":    {"sz": 12, "val": "single", "color": "000000", "space": "0"},
+        "bottom": {"sz": 12, "val": "single", "color": "000000", "space": "0"},
+        "left":   {"sz": 12, "val": "single", "color": "000000", "space": "0"},
+        "right":  {"sz": 12, "val": "single", "color": "000000", "space": "0"},
+    }
+    for date, message in sorted(week_report.items()):
+        row = table.add_row().cells
+        row[0].text = date.strftime('%m/%d/%Y')  # DATE
+        row[1].text = message                   # TASK
+        for cell in row:
+            set_cell_border(cell, **border_settings)
+            set_cell_padding(cell)  # Add padding to each cell
+    doc.save(output_path)
+
 def main():
     if len(sys.argv) != 2:
         print("Usage: wsr <monday_date>")
@@ -136,7 +205,17 @@ def main():
     workspace_path = os.path.expanduser("~/Workspaces")
     all_reports = process_workspace(workspace_path, monday_date)
     
-    # Generate output filename based on the start week
+    # Generate output filename and docx per week
+    template_path = os.path.join(os.path.dirname(__file__), '../template/WSR_Template.docx')
+    if os.path.exists(template_path):
+        for week_monday, week_report in sorted(all_reports.items()):
+            output_docx = f"status_report_{week_monday.strftime('%Y%m%d')}.docx"
+            fill_docx_report(template_path, output_docx, week_report)
+            print(f"Status report (docx) generated: {output_docx}")
+    else:
+        print(f"Template not found at {template_path}. Skipping docx generation.")
+
+    # Optionally, still generate a single txt file for all weeks
     output_file = f"status_report_{monday_date.strftime('%Y%m%d')}.txt"
     generate_report(all_reports, output_file)
     print(f"\nStatus report generated: {output_file}")
