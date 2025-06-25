@@ -34,3 +34,6 @@ env/
 # Generated files
 status_report_*.txt 
 status_report_*.docx 
+
+#OS files
+.DS_Store

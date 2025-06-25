@@ -164,9 +164,39 @@ def set_cell_padding(cell, top=0.08, bottom=0.08, left=0.08, right=0.08):
         node.set(qn('w:w'), str(int(Inches(value).twips)))
         node.set(qn('w:type'), 'dxa')
 
-def fill_docx_report(template_path, output_path, week_report):
+def fill_docx_report(template_path, output_path, week_report, week_monday, repo_commits):
     """Fill the docx template with a single week's status report data and save as a new file."""
     doc = Document(template_path)
+    # Fill header fields (assume first 2 paragraphs for FROM/WEEK ENDING, next 2 for CLIENT/PROJECT)
+    # FROM: Harsha Kocherla
+    # WEEK ENDING: last date in week_report
+    # CLIENT NAME: Best Buy
+    # PROJECT NAME: comma-separated repo names with commits
+    week_dates = sorted(week_report.keys())
+    week_ending = week_dates[-1].strftime('%m/%d/%Y') if week_dates else ''
+    project_names = ', '.join(sorted(repo_commits))
+    # Fill fields in the first 4 paragraphs (assuming template structure)
+    for para in doc.paragraphs:
+        if 'FROM:' in para.text:
+            for run in para.runs:
+                if 'FROM:' in run.text:
+                    run.text = f"FROM: Harsha Kocherla"
+            if 'WEEK ENDING:' in para.text:
+                para.text = para.text.split('WEEK ENDING:')[0] + f"WEEK ENDING: {week_ending}"
+        elif 'WEEK ENDING:' in para.text:
+            for run in para.runs:
+                if 'WEEK ENDING:' in run.text:
+                    run.text = f"WEEK ENDING: {week_ending}"
+        elif 'CLIENT NAME:' in para.text:
+            for run in para.runs:
+                if 'CLIENT NAME:' in run.text:
+                    run.text = f"CLIENT NAME: Best Buy"
+            if 'PROJECT NAME:' in para.text:
+                para.text = para.text.split('PROJECT NAME:')[0] + f"PROJECT NAME: {project_names}"
+        elif 'PROJECT NAME:' in para.text:
+            for run in para.runs:
+                if 'PROJECT NAME:' in run.text:
+                    run.text = f"PROJECT NAME: {project_names}"
     table = doc.tables[0]
     # Remove all rows except the header
     while len(table.rows) > 1:
@@ -205,12 +235,21 @@ def main():
     workspace_path = os.path.expanduser("~/Workspaces")
     all_reports = process_workspace(workspace_path, monday_date)
     
-    # Generate output filename and docx per week
+    # For each week, collect repo names with commits for that week
     template_path = os.path.join(os.path.dirname(__file__), '../template/WSR_Template.docx')
     if os.path.exists(template_path):
         for week_monday, week_report in sorted(all_reports.items()):
+            repo_commits = set()
+            for item in Path(workspace_path).iterdir():
+                if item.is_dir() and is_git_repo(item):
+                    repo = git.Repo(item)
+                    user_email, user_name = get_current_git_user(repo)
+                    for date in week_report:
+                        commits = get_commits_for_date(repo, date, user_email, user_name)
+                        if commits:
+                            repo_commits.add(item.name)
             output_docx = f"status_report_{week_monday.strftime('%Y%m%d')}.docx"
-            fill_docx_report(template_path, output_docx, week_report)
+            fill_docx_report(template_path, output_docx, week_report, week_monday, repo_commits)
             print(f"Status report (docx) generated: {output_docx}")
     else:
         print(f"Template not found at {template_path}. Skipping docx generation.")
