@@ -2,6 +2,15 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.2.0] - 2024-03-19
+
+### Changed
+- Generate one `.docx` status report per week: Now, for a given Monday, the tool creates a separate `.docx` file for each week (Monday–Friday) using the provided template.
+- Table formatting improvements: All generated tables now have visible borders and added cell padding for improved readability and a more professional look.
+- Helper functions: Added utility functions to set table cell borders and padding using `python-docx`.
+- Retain `.txt` report: The tool still generates a single `.txt` report for all weeks as before.
+- Improved user experience: The generated reports are now easier to read and ready for direct use in status updates.
+
 ## [0.1.0] - 2024-03-19
 
 ### Added
